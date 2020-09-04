@@ -1,0 +1,22 @@
+{
+    // ====================================================================== //
+    // Convert spaces to tabs
+    //     https://stackoverflow.com/a/36814851
+    // ====================================================================== //
+    // The number of spaces a tab is equal to.
+    "editor.tabSize": 4,
+    // Insert spaces when pressing Tab.
+    "editor.insertSpaces": true,
+    // When opening a file, `editor.tabSize` and `editor.insertSpaces` will be detected based on the file contents.
+    "editor.detectIndentation": true,
+
+    "editor.fontSize": 14,
+    "editor.rulers": [80,120],
+    "workbench.colorCustomizations": {
+        "editorRuler.foreground": "#3f6277"
+    },
+    "python.autoComplete.extraPaths": [
+        "/home/ftx/catkin_ws/devel/lib/python2.7/dist-packages",
+        "/opt/ros/kinetic/lib/python2.7/dist-packages"
+    ]
+}

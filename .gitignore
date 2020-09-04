@@ -5,7 +5,7 @@ data_generator/
 test/
 test.launch
 evaluate/
-.vscode/
+# .vscode/
 result.txt
 result_global.txt
 result_gps.txt

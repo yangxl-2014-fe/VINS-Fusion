@@ -135,10 +135,10 @@ void sync_process()
 void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg)
 {
     double t = imu_msg->header.stamp.toSec();
-    double dx = imu_msg->linear_acceleration.x;
+    double dx = imu_msg->linear_acceleration.x;  // \hat{a}_t & = & a_t + b_{a_t} + R_w^t g^w + n_a
     double dy = imu_msg->linear_acceleration.y;
     double dz = imu_msg->linear_acceleration.z;
-    double rx = imu_msg->angular_velocity.x;
+    double rx = imu_msg->angular_velocity.x;     // \hat{w}_t & = & w_t + b_{w_t} + n_w
     double ry = imu_msg->angular_velocity.y;
     double rz = imu_msg->angular_velocity.z;
     Vector3d acc(dx, dy, dz);

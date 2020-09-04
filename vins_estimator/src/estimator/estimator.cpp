@@ -30,9 +30,9 @@ void Estimator::clearState()
 {
     mProcess.lock();
     while(!accBuf.empty())
-        accBuf.pop();
+        accBuf.pop();  // accelerometer measurements : \hat{a}_t & = & a_t + b_{a_t} + R_w^t g^w + n_a
     while(!gyrBuf.empty())
-        gyrBuf.pop();
+        gyrBuf.pop();  // gyroscope measurements     : \hat{w}_t & = & w_t + b_{w_t} + n_w
     while(!featureBuf.empty())
         featureBuf.pop();
 
@@ -208,7 +208,7 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     {
         mPropagate.lock();
         fastPredictIMU(t, linearAcceleration, angularVelocity);
-        pubLatestOdometry(latest_P, latest_Q, latest_V, t);
+        pubLatestOdometry(latest_P, latest_Q, latest_V, t);  // P : position  Q : quaternion (orientation status)  V : velocity
         mPropagate.unlock();
     }
 }
@@ -1570,11 +1570,16 @@ void Estimator::outliersRejection(set<int> &removeIndex)
 
 void Estimator::fastPredictIMU(double t, Eigen::Vector3d linear_acceleration, Eigen::Vector3d angular_velocity)
 {
+    /** Notes:
+     * At the beginning, the additive noise terms n_a, n_w are unknown, and is treated as zero.
+     * 初中物理知识: s_1 = s_0 + v_0 t + 1/2 at^2
+     *             v_1 = v_0 + a t
+     */
     double dt = t - latest_time;
     latest_time = t;
     Eigen::Vector3d un_acc_0 = latest_Q * (latest_acc_0 - latest_Ba) - g;
-    Eigen::Vector3d un_gyr = 0.5 * (latest_gyr_0 + angular_velocity) - latest_Bg;
-    latest_Q = latest_Q * Utility::deltaQ(un_gyr * dt);
+    Eigen::Vector3d un_gyr = 0.5 * (latest_gyr_0 + angular_velocity) - latest_Bg;  // mid-point integration
+    latest_Q = latest_Q * Utility::deltaQ(un_gyr * dt);                            // update orientation
     Eigen::Vector3d un_acc_1 = latest_Q * (linear_acceleration - latest_Ba) - g;
     Eigen::Vector3d un_acc = 0.5 * (un_acc_0 + un_acc_1);
     latest_P = latest_P + dt * latest_V + 0.5 * dt * dt * un_acc;
@@ -1587,11 +1592,11 @@ void Estimator::updateLatestStates()
 {
     mPropagate.lock();
     latest_time = Headers[frame_count] + td;
-    latest_P = Ps[frame_count];
-    latest_Q = Rs[frame_count];
-    latest_V = Vs[frame_count];
-    latest_Ba = Bas[frame_count];
-    latest_Bg = Bgs[frame_count];
+    latest_P = Ps[frame_count];    // position
+    latest_Q = Rs[frame_count];    // orientation / quaternion
+    latest_V = Vs[frame_count];    // velocity
+    latest_Ba = Bas[frame_count];  // accelerometer measurement of body frame
+    latest_Bg = Bgs[frame_count];  // gyroscope measurement     of body frame
     latest_acc_0 = acc_0;
     latest_gyr_0 = gyr_0;
     mBuf.lock();

@@ -11,6 +11,7 @@
 
 int FeaturePerId::endFrame()
 {
+    // 获取特征出现的最后一帧序号 - 此方法貌似有缺陷，不支持间隔型
     return start_frame + feature_per_frame.size() - 1;
 }
 
@@ -34,6 +35,9 @@ void FeatureManager::clearState()
     feature.clear();
 }
 
+/**
+ * \brief 统计出现次数不少于 4 次特征的数量
+ */
 int FeatureManager::getFeatureCount()
 {
     int cnt = 0;
@@ -48,7 +52,14 @@ int FeatureManager::getFeatureCount()
     return cnt;
 }
 
-
+/**
+ * \brief 判断是否为新的关键帧: (论文 P4 Vision Processing Front-end) 若当前帧与最新关键帧匹配的平均视差超过阈值，则视为关键帧；
+ *        若跟踪到的特征数量少于阈值，或新特征数量超过一定阈值，也视为关键帧
+ *
+ * \param frame_count 帧序号
+ * \param image 图像特征
+ * \param td 时间戳
+ */
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
     ROS_DEBUG("input feature: %d", (int)image.size());
@@ -63,12 +74,13 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
         assert(id_pts.second[0].first == 0);
-        if(id_pts.second.size() == 2)
+        if(id_pts.second.size() == 2)  // 仅有一对特征 ？
         {
             f_per_fra.rightObservation(id_pts.second[1].second);
             assert(id_pts.second[1].first == 1);
         }
 
+        // 查找特征是否出现过
         int feature_id = id_pts.first;
         auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it)
                           {
@@ -77,24 +89,28 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
 
         if (it == feature.end())
         {
+            // 此前未出现过的新特征
             feature.push_back(FeaturePerId(feature_id, frame_count));
             feature.back().feature_per_frame.push_back(f_per_fra);
-            new_feature_num++;
+            new_feature_num++;  //! 新特征数量
         }
         else if (it->feature_id == feature_id)
         {
+            // 为此前出现过的特征
             it->feature_per_frame.push_back(f_per_fra);
-            last_track_num++;
+            last_track_num++;  //! 跟踪到的特征数量
             if( it-> feature_per_frame.size() >= 4)
-                long_track_num++;
+                long_track_num++;  //! 被跟踪次数超过 4 的特征数量
         }
     }
 
     //if (frame_count < 2 || last_track_num < 20)
     //if (frame_count < 2 || last_track_num < 20 || new_feature_num > 0.5 * last_track_num)
+    // 关键帧
     if (frame_count < 2 || last_track_num < 20 || long_track_num < 40 || new_feature_num > 0.5 * last_track_num)
         return true;
 
+    // 计算视差
     for (auto &it_per_id : feature)
     {
         if (it_per_id.start_frame <= frame_count - 2 &&
@@ -114,10 +130,16 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
         ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
         ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
         last_average_parallax = parallax_sum / parallax_num * FOCAL_LENGTH;
-        return parallax_sum / parallax_num >= MIN_PARALLAX;
+        return parallax_sum / parallax_num >= MIN_PARALLAX;  //! 视差是否超过阈值
     }
 }
 
+/**
+ * \brief 获取匹配的特征点在两帧中的坐标
+ *
+ * \param frame_count_l 帧序号1
+ * \param frame_count_r 帧序号2
+ */
 vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_count_l, int frame_count_r)
 {
     vector<pair<Vector3d, Vector3d>> corres;
@@ -139,6 +161,9 @@ vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_coun
     return corres;
 }
 
+/**
+ * \brief 计算特征值的深度信息
+ */
 void FeatureManager::setDepth(const VectorXd &x)
 {
     int feature_index = -1;
@@ -159,6 +184,9 @@ void FeatureManager::setDepth(const VectorXd &x)
     }
 }
 
+/**
+ * \brief 踢出深度值估算失败的特征点
+ */
 void FeatureManager::removeFailures()
 {
     for (auto it = feature.begin(), it_next = feature.begin();
@@ -176,6 +204,9 @@ void FeatureManager::clearDepth()
         it_per_id.estimated_depth = -1;
 }
 
+/**
+ * \brief 估算跟踪次数不少于 4 的特征点的深度信息
+ */
 VectorXd FeatureManager::getDepthVector()
 {
     VectorXd dep_vec(getFeatureCount());
@@ -194,7 +225,15 @@ VectorXd FeatureManager::getDepthVector()
     return dep_vec;
 }
 
-
+/**
+ * \brief 根据特征匹配信息，计算 3D 坐标
+ *
+ * \param Pose0 姿态0
+ * \param Pose1 姿态1
+ * \param point0 在姿态0下的特征坐标
+ * \param point1 在姿态1下的特征坐标
+ * \param point_3d [O] 三角化得到的 3D 点坐标
+ */
 void FeatureManager::triangulatePoint(Eigen::Matrix<double, 3, 4> &Pose0, Eigen::Matrix<double, 3, 4> &Pose1,
                         Eigen::Vector2d &point0, Eigen::Vector2d &point1, Eigen::Vector3d &point_3d)
 {

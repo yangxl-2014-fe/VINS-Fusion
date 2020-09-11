@@ -86,6 +86,7 @@ class Estimator
         NON_LINEAR
     };
 
+    // 边缘化操作时都是二选一，加入第二新的帧，则需要踢出窗口内最早的关键帧
     enum MarginalizationFlag
     {
         MARGIN_OLD = 0,
@@ -113,11 +114,11 @@ class Estimator
     Matrix3d ric[2];
     Vector3d tic[2];
 
-    Vector3d        Ps[(WINDOW_SIZE + 1)];
-    Vector3d        Vs[(WINDOW_SIZE + 1)];
-    Matrix3d        Rs[(WINDOW_SIZE + 1)];
-    Vector3d        Bas[(WINDOW_SIZE + 1)];
-    Vector3d        Bgs[(WINDOW_SIZE + 1)];
+    Vector3d        Ps[(WINDOW_SIZE + 1)];  //! 位置
+    Vector3d        Vs[(WINDOW_SIZE + 1)];  //! 速度
+    Matrix3d        Rs[(WINDOW_SIZE + 1)];  //! 变换矩阵 或 四元数
+    Vector3d        Bas[(WINDOW_SIZE + 1)]; //! 加速度
+    Vector3d        Bgs[(WINDOW_SIZE + 1)]; //! 角速度
     double td;
 
     Matrix3d back_R0, last_R, last_R0;

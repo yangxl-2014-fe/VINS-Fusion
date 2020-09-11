@@ -54,6 +54,7 @@ FeatureTracker::FeatureTracker()
 
 void FeatureTracker::setMask()
 {
+    // 将特征按其匹配的次数进行排序，通过画圆进行 nms 筛选
     mask = cv::Mat(row, col, CV_8UC1, cv::Scalar(255));
 
     // prefer to keep features that are tracked for long time
@@ -134,6 +135,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
         // reverse check
         if(FLOW_BACK)
         {
+            // 双向匹配验证
             vector<uchar> reverse_status;
             vector<cv::Point2f> reverse_pts = prev_pts;
             cv::calcOpticalFlowPyrLK(cur_img, prev_img, cur_pts, reverse_pts, reverse_status, err, cv::Size(21, 21), 1, 
@@ -181,6 +183,7 @@ map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> FeatureTracker::trackIm
                 cout << "mask is empty " << endl;
             if (mask.type() != CV_8UC1)
                 cout << "mask type wrong " << endl;
+            // 筛选最优特征进行跟踪
             cv::goodFeaturesToTrack(cur_img, n_pts, MAX_CNT - cur_pts.size(), 0.01, MIN_DIST, mask);
         }
         else
@@ -388,6 +391,12 @@ void FeatureTracker::showUndistortion(const string &name)
     // cv::waitKey(0);
 }
 
+/**
+ * \brief 将图像特征的 2D 坐标，转换成考虑畸变的 光线向量 (类似于光线跟踪)，再将其齐次化
+ *
+ * \param pts 特征点集
+ * \param cam 相机模型对象
+ */
 vector<cv::Point2f> FeatureTracker::undistortedPts(vector<cv::Point2f> &pts, camodocal::CameraPtr cam)
 {
     vector<cv::Point2f> un_pts;
@@ -401,10 +410,20 @@ vector<cv::Point2f> FeatureTracker::undistortedPts(vector<cv::Point2f> &pts, cam
     return un_pts;
 }
 
+/**
+ * \brief 计算每个特征点的速度
+ *
+ * \param ids 当前帧的特征序号集
+ * \param pts 当前帧的特征坐标集
+ * \param cur_id_pts 当前帧的特征组成: 序号+坐标
+ * \param prev_id_pts 前一帧的特征组成: 序号+坐标
+ *
+ * \return 每个特征点的速度
+ */
 vector<cv::Point2f> FeatureTracker::ptsVelocity(vector<int> &ids, vector<cv::Point2f> &pts, 
                                             map<int, cv::Point2f> &cur_id_pts, map<int, cv::Point2f> &prev_id_pts)
 {
-    vector<cv::Point2f> pts_velocity;
+    vector<cv::Point2f> pts_velocity;  // 特征点的速度
     cur_id_pts.clear();
     for (unsigned int i = 0; i < ids.size(); i++)
     {
@@ -419,7 +438,7 @@ vector<cv::Point2f> FeatureTracker::ptsVelocity(vector<int> &ids, vector<cv::Poi
         for (unsigned int i = 0; i < pts.size(); i++)
         {
             std::map<int, cv::Point2f>::iterator it;
-            it = prev_id_pts.find(ids[i]);
+            it = prev_id_pts.find(ids[i]);  // 查找特征匹配
             if (it != prev_id_pts.end())
             {
                 double v_x = (pts[i].x - it->second.x) / dt;
@@ -441,6 +460,18 @@ vector<cv::Point2f> FeatureTracker::ptsVelocity(vector<int> &ids, vector<cv::Poi
     return pts_velocity;
 }
 
+/**
+ * \brief 合成一张图显示特征点的匹配关系
+ *
+ * \param imLeft 左图
+ * \param imRight 右图
+ * \param curLeftIds 当前左图的特征序号
+ * \param curLeftPts 当前左图的特征坐标集
+ * \param curRightPts 当前右图的特征坐标集
+ * \param prevLeftPtsMap 前一帧左图的特征信息
+ *
+ * \return 无
+ */
 void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight, 
                                vector<int> &curLeftIds,
                                vector<cv::Point2f> &curLeftPts, 
@@ -450,7 +481,7 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
     //int rows = imLeft.rows;
     int cols = imLeft.cols;
     if (!imRight.empty() && stereo_cam)
-        cv::hconcat(imLeft, imRight, imTrack);
+        cv::hconcat(imLeft, imRight, imTrack);  // 将两图水平的拼接
     else
         imTrack = imLeft.clone();
     cv::cvtColor(imTrack, imTrack, CV_GRAY2RGB);
@@ -458,7 +489,7 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
     for (size_t j = 0; j < curLeftPts.size(); j++)
     {
         double len = std::min(1.0, 1.0 * track_cnt[j] / 20);
-        cv::circle(imTrack, curLeftPts[j], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);
+        cv::circle(imTrack, curLeftPts[j], 2, cv::Scalar(255 * (1 - len), 0, 255 * len), 2);  // 以圆绘制左图特征
     }
     if (!imRight.empty() && stereo_cam)
     {
@@ -466,7 +497,7 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
         {
             cv::Point2f rightPt = curRightPts[i];
             rightPt.x += cols;
-            cv::circle(imTrack, rightPt, 2, cv::Scalar(0, 255, 0), 2);
+            cv::circle(imTrack, rightPt, 2, cv::Scalar(0, 255, 0), 2);  // 考虑偏移绘制右图特征
             //cv::Point2f leftPt = curLeftPtsTrackRight[i];
             //cv::line(imTrack, leftPt, rightPt, cv::Scalar(0, 255, 0), 1, 8, 0);
         }
@@ -479,7 +510,7 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
         mapIt = prevLeftPtsMap.find(id);
         if(mapIt != prevLeftPtsMap.end())
         {
-            cv::arrowedLine(imTrack, curLeftPts[i], mapIt->second, cv::Scalar(0, 255, 0), 1, 8, 0, 0.2);
+            cv::arrowedLine(imTrack, curLeftPts[i], mapIt->second, cv::Scalar(0, 255, 0), 1, 8, 0, 0.2);  // 为何此处不添加偏移
         }
     }
 
@@ -496,7 +527,11 @@ void FeatureTracker::drawTrack(const cv::Mat &imLeft, const cv::Mat &imRight,
     //cv::resize(imCur2, imCur2Compress, cv::Size(cols, rows / 2));
 }
 
-
+/**
+ * \brief 将本帧非首次出现的特征投射到世界帧的成像平面
+ *
+ * \param predictPts [O] 用于跟踪的 3D 特征点坐标集
+ */
 void FeatureTracker::setPrediction(map<int, Eigen::Vector3d> &predictPts)
 {
     hasPrediction = true;
@@ -511,7 +546,7 @@ void FeatureTracker::setPrediction(map<int, Eigen::Vector3d> &predictPts)
         if (itPredict != predictPts.end())
         {
             Eigen::Vector2d tmp_uv;
-            m_camera[0]->spaceToPlane(itPredict->second, tmp_uv);
+            m_camera[0]->spaceToPlane(itPredict->second, tmp_uv);  // 将 3D 点投射到世界帧的成像平面
             predict_pts.push_back(cv::Point2f(tmp_uv.x(), tmp_uv.y()));
             predict_pts_debug.push_back(cv::Point2f(tmp_uv.x(), tmp_uv.y()));
         }
@@ -521,6 +556,11 @@ void FeatureTracker::setPrediction(map<int, Eigen::Vector3d> &predictPts)
 }
 
 
+/**
+ * \brief 剔除 outlier
+ *
+ * \param removePtsIds 待剔除的特征点序号集
+ */
 void FeatureTracker::removeOutliers(set<int> &removePtsIds)
 {
     std::set<int>::iterator itSet;

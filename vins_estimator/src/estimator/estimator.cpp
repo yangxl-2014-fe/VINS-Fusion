@@ -114,11 +114,17 @@ void Estimator::setParameter()
     if (MULTIPLE_THREAD && !initThreadFlag)
     {
         initThreadFlag = true;
-        processThread = std::thread(&Estimator::processMeasurements, this);
+        processThread = std::thread(&Estimator::processMeasurements, this);  //! 主线程
     }
     mProcess.unlock();
 }
 
+/**
+ * \brief 切换传感器状态
+ *
+ * \param use_imu 是否使用 IMU
+ * \param use_stereo 是否使用双目
+ */
 void Estimator::changeSensorType(int use_imu, int use_stereo)
 {
     bool restart = false;
@@ -157,6 +163,13 @@ void Estimator::changeSensorType(int use_imu, int use_stereo)
     }
 }
 
+/**
+ * \brief 提取图像特征，显示特征匹配状态
+ *
+ * \param t 时间戳
+ * \param _img 左图像
+ * \param _img1 右图像
+ */
 void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 {
     inputImageCnt++;
@@ -196,6 +209,13 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
     
 }
 
+/**
+ * \brief 快速积分 IMU 姿态信息，并发布此时刻的 位置、速度和矩阵 信息
+ *
+ * \param t 时间戳
+ * \param linearAcceleration 线性加速度
+ * \param angularVelocity 角速度
+ */
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
     mBuf.lock();
@@ -223,7 +243,14 @@ void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Ma
         processMeasurements();
 }
 
-
+/**
+ * \brief 获取两个时刻之间的 IMU 数据
+ *
+ * \param t0 起始时刻
+ * \param t1 结束时刻
+ * \param accVector 线性加速度数据
+ * \param gryVector 角速度数据
+ */
 bool Estimator::getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector, 
                                 vector<pair<double, Eigen::Vector3d>> &gyrVector)
 {
@@ -267,6 +294,9 @@ bool Estimator::IMUAvailable(double t)
         return false;
 }
 
+/**
+ * \brief 无限循环的主程序，特征缓存区非空时，等待 IMU 数据，特征匹配
+ */
 void Estimator::processMeasurements()
 {
     while (1)
@@ -280,6 +310,7 @@ void Estimator::processMeasurements()
             curTime = feature.first + td;
             while(1)
             {
+                // 等待 IMU 数据
                 if ((!USE_IMU  || IMUAvailable(feature.first + td)))
                     break;
                 else
@@ -300,6 +331,7 @@ void Estimator::processMeasurements()
 
             if(USE_IMU)
             {
+                // 由 IMU 计算姿态
                 if(!initFirstPoseFlag)
                     initFirstIMUPose(accVector);
                 for(size_t i = 0; i < accVector.size(); i++)
@@ -342,6 +374,11 @@ void Estimator::processMeasurements()
 }
 
 
+/**
+ * \brief 计算 变换矩阵的 初值
+ *
+ * \param accVector 加速度量
+ */
 void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVector)
 {
     printf("init first imu pose\n");
@@ -371,7 +408,14 @@ void Estimator::initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r)
     initR = r;
 }
 
-
+/**
+ * \brief 根据当前的时间间隔、线加速度和角速度，计算当前的 位置、速度和姿态
+ *
+ * \param t 时刻
+ * \param dt 时间间隔
+ * \param linear_acceleration 线加速度
+ * \param angular_velocity 角速度
+ */
 void Estimator::processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity)
 {
     if (!first_imu)
@@ -409,22 +453,28 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
     gyr_0 = angular_velocity; 
 }
 
+/**
+ * \brief 
+ *
+ * \param image 图像特征
+ * \param header 时间戳
+ */
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header)
 {
     ROS_DEBUG("new image coming ------------------------------------------");
     ROS_DEBUG("Adding feature points %lu", image.size());
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
     {
-        marginalization_flag = MARGIN_OLD;
+        marginalization_flag = MARGIN_OLD;  // 剔除窗口内最早的关键帧
         //printf("keyframe\n");
     }
     else
     {
-        marginalization_flag = MARGIN_SECOND_NEW;
+        marginalization_flag = MARGIN_SECOND_NEW;  // 剔除窗口内第二新的帧
         //printf("non-keyframe\n");
     }
 
-    ROS_DEBUG("%s", marginalization_flag ? "Non-keyframe" : "Keyframe");
+    ROS_DEBUG("%s", marginalization_flag ? "Non-keyframe" : "Keyframe");  // 第二新的帧是否为关键帧
     ROS_DEBUG("Solving %d", frame_count);
     ROS_DEBUG("number of feature: %d", f_manager.getFeatureCount());
     Headers[frame_count] = header;

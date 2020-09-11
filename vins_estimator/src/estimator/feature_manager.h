@@ -25,11 +25,12 @@ using namespace Eigen;
 #include "parameters.h"
 #include "../utility/tic_toc.h"
 
-class FeaturePerFrame
+class FeaturePerFrame  // 七维特征
 {
   public:
     FeaturePerFrame(const Eigen::Matrix<double, 7, 1> &_point, double td)
     {
+        // 左图特征集
         point.x() = _point(0);
         point.y() = _point(1);
         point.z() = _point(2);
@@ -37,11 +38,12 @@ class FeaturePerFrame
         uv.y() = _point(4);
         velocity.x() = _point(5); 
         velocity.y() = _point(6); 
-        cur_td = td;
+        cur_td = td;  //! 时间戳
         is_stereo = false;
     }
     void rightObservation(const Eigen::Matrix<double, 7, 1> &_point)
     {
+        // 右图特征集
         pointRight.x() = _point(0);
         pointRight.y() = _point(1);
         pointRight.z() = _point(2);
@@ -52,18 +54,19 @@ class FeaturePerFrame
         is_stereo = true;
     }
     double cur_td;
-    Vector3d point, pointRight;
-    Vector2d uv, uvRight;
-    Vector2d velocity, velocityRight;
+    Vector3d point, pointRight;        //! 特征点的三维坐标
+    Vector2d uv, uvRight;              //! 特征点的二维图像坐标
+    Vector2d velocity, velocityRight;  //! 特征点的速度
     bool is_stereo;
 };
 
 class FeaturePerId
 {
+  // 特征的序号，首次出现的帧序号
   public:
-    const int feature_id;
-    int start_frame;
-    vector<FeaturePerFrame> feature_per_frame;
+    const int feature_id;  //! 特征序号
+    int start_frame;       //! 首帧出现的帧序号
+    vector<FeaturePerFrame> feature_per_frame;  //! 在各帧中的坐标
     int used_num;
     double estimated_depth;
     int solve_flag; // 0 haven't solve yet; 1 solve succ; 2 solve fail;
@@ -102,11 +105,11 @@ class FeatureManager
     void removeBack();
     void removeFront(int frame_count);
     void removeOutlier(set<int> &outlierIndex);
-    list<FeaturePerId> feature;
-    int last_track_num;
+    list<FeaturePerId> feature;  //! 特征集
+    int last_track_num;  //! 跟踪到的特征数量
     double last_average_parallax;
-    int new_feature_num;
-    int long_track_num;
+    int new_feature_num;  //! 新特征数量
+    int long_track_num;   //! 被跟踪次数超过 4 的特征数量
 
   private:
     double compensatedParallax2(const FeaturePerId &it_per_id, int frame_count);

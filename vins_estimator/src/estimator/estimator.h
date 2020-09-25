@@ -98,7 +98,7 @@ class Estimator
     std::mutex mPropagate;
     queue<pair<double, Eigen::Vector3d>> accBuf;
     queue<pair<double, Eigen::Vector3d>> gyrBuf;
-    queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;
+    queue<pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > > featureBuf;  //! <时间戳, <特征号, <相机序号, <x, y, z, p_u, p_v, velocity_x, velocity_y >
     double prevTime, curTime;
     bool openExEstimation;
 
@@ -108,7 +108,7 @@ class Estimator
     FeatureTracker featureTracker;
 
     SolverFlag solver_flag;
-    MarginalizationFlag  marginalization_flag;
+    MarginalizationFlag  marginalization_flag;  //! 边缘化
     Vector3d g;
 
     Matrix3d ric[2];
@@ -119,7 +119,7 @@ class Estimator
     Matrix3d        Rs[(WINDOW_SIZE + 1)];  //! 变换矩阵 或 四元数
     Vector3d        Bas[(WINDOW_SIZE + 1)]; //! 加速度
     Vector3d        Bgs[(WINDOW_SIZE + 1)]; //! 角速度
-    double td;
+    double td;                              //! IMU 与 Camera 间时差
 
     Matrix3d back_R0, last_R, last_R0;
     Vector3d back_P0, last_P, last_P0;

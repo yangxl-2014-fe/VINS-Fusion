@@ -56,9 +56,9 @@ int FeatureManager::getFeatureCount()
  * \brief 判断是否为新的关键帧: (论文 P4 Vision Processing Front-end) 若当前帧与最新关键帧匹配的平均视差超过阈值，则视为关键帧；
  *        若跟踪到的特征数量少于阈值，或新特征数量超过一定阈值，也视为关键帧
  *
- * \param frame_count 帧序号
- * \param image 图像特征
- * \param td 时间戳
+ * \param frame_count  帧序号
+ * \param image        图像特征
+ * \param td           IMU 与 Camera 间时差
  */
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {

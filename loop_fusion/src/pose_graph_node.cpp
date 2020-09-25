@@ -401,6 +401,9 @@ int main(int argc, char **argv)
 {
     ros::init(argc, argv, "loop_fusion");
     ros::NodeHandle n("~");
+    if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
+        ros::console::notifyLoggerLevelsChanged();
+    }
     posegraph.registerPub(n);
     
     VISUALIZATION_SHIFT_X = 0;

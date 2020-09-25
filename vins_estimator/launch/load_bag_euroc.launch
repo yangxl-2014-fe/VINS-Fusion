@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="play_rosbag_file" pkg="rosbag" type="play" output="screen" args="/disk4t0/SLAM/EuRoC_MAV_Dataset/machine_hall/MH_01_easy/MH_01_easy.bag" />
+</launch>

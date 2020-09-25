@@ -122,7 +122,7 @@ void Estimator::setParameter()
 /**
  * \brief 切换传感器状态
  *
- * \param use_imu 是否使用 IMU
+ * \param use_imu    是否使用 IMU
  * \param use_stereo 是否使用双目
  */
 void Estimator::changeSensorType(int use_imu, int use_stereo)
@@ -166,9 +166,9 @@ void Estimator::changeSensorType(int use_imu, int use_stereo)
 /**
  * \brief 提取图像特征，显示特征匹配状态
  *
- * \param t 时间戳
- * \param _img 左图像
- * \param _img1 右图像
+ * \param t      时间戳
+ * \param _img   左图像
+ * \param _img1  右图像
  */
 void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 {
@@ -206,15 +206,14 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
         processMeasurements();
         printf("process time: %f\n", processTime.toc());
     }
-    
 }
 
 /**
  * \brief 快速积分 IMU 姿态信息，并发布此时刻的 位置、速度和矩阵 信息
  *
- * \param t 时间戳
- * \param linearAcceleration 线性加速度
- * \param angularVelocity 角速度
+ * \param t                   时间戳
+ * \param linearAcceleration  线性加速度
+ * \param angularVelocity     角速度
  */
 void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vector3d &angularVelocity)
 {
@@ -246,10 +245,10 @@ void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Ma
 /**
  * \brief 获取两个时刻之间的 IMU 数据
  *
- * \param t0 起始时刻
- * \param t1 结束时刻
- * \param accVector 线性加速度数据
- * \param gryVector 角速度数据
+ * \param t0         起始时刻
+ * \param t1         结束时刻
+ * \param accVector  线性加速度数据
+ * \param gryVector  角速度数据
  */
 bool Estimator::getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector, 
                                 vector<pair<double, Eigen::Vector3d>> &gyrVector)
@@ -411,10 +410,10 @@ void Estimator::initFirstPose(Eigen::Vector3d p, Eigen::Matrix3d r)
 /**
  * \brief 根据当前的时间间隔、线加速度和角速度，计算当前的 位置、速度和姿态
  *
- * \param t 时刻
- * \param dt 时间间隔
- * \param linear_acceleration 线加速度
- * \param angular_velocity 角速度
+ * \param t                    时间戳
+ * \param dt                   时间间隔
+ * \param linear_acceleration  线加速度
+ * \param angular_velocity     角速度
  */
 void Estimator::processIMU(double t, double dt, const Vector3d &linear_acceleration, const Vector3d &angular_velocity)
 {
@@ -456,8 +455,8 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
 /**
  * \brief 
  *
- * \param image 图像特征
- * \param header 时间戳
+ * \param image   图像特征
+ * \param header  时间戳
  */
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header)
 {

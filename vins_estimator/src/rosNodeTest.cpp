@@ -72,6 +72,7 @@ void sync_process()
 {
     while(1)
     {
+        // ROS_DEBUG_STREAM("  STEREO:               " << STEREO << " [rosNodeTest.cpp:" << __LINE__ << "]");
         if(STEREO)
         {
             cv::Mat image0, image1;
@@ -105,8 +106,10 @@ void sync_process()
                 }
             }
             m_buf.unlock();
-            if(!image0.empty())
+            if(!image0.empty()) {
+                ROS_INFO("  - exec [rosNodeTest.cpp:%d]", __LINE__);
                 estimator.inputImage(time, image0, image1);
+            }
         }
         else
         {
@@ -122,8 +125,10 @@ void sync_process()
                 img0_buf.pop();
             }
             m_buf.unlock();
-            if(!image.empty())
+            if(!image.empty()) {
+                ROS_INFO("  - exec [rosNodeTest.cpp:%d]", __LINE__);
                 estimator.inputImage(time, image);
+            }
         }
 
         std::chrono::milliseconds dura(2);
@@ -221,14 +226,73 @@ void cam_switch_callback(const std_msgs::BoolConstPtr &switch_msg)
     return;
 }
 
+void print_params()
+{
+    ROS_WARN("print_params() [rosNodeTest.cpp]");
+
+    ROS_DEBUG_STREAM("  ========== Parameters ========== (ref: ./vins_estimator/src/estimator/parameters.cpp)");
+    ROS_DEBUG_STREAM("  INIT_DEPTH:           " << INIT_DEPTH);
+    ROS_DEBUG_STREAM("  MIN_PARALLAX:         " << MIN_PARALLAX);
+    ROS_DEBUG_STREAM("  ACC_N:                " << ACC_N);
+    ROS_DEBUG_STREAM("  ACC_W:                " << ACC_W);
+    ROS_DEBUG_STREAM("  GYR_N:                " << GYR_N);
+    ROS_DEBUG_STREAM("  GYR_W:                " << GYR_W);
+    ROS_DEBUG_STREAM("  RIC.size():           " << RIC.size());
+    ROS_DEBUG_STREAM("  TIC.size():           " << TIC.size());
+    ROS_DEBUG       ("  G:                   {%f, %f, %f}", G.x(), G.y(), G.z());
+    ROS_DEBUG_STREAM("  BIAS_ACC_THRESHOLD:   " << BIAS_ACC_THRESHOLD);
+    ROS_DEBUG_STREAM("  BIAS_GYR_THRESHOLD:   " << BIAS_GYR_THRESHOLD);
+    ROS_DEBUG_STREAM("  SOLVER_TIME:          " << SOLVER_TIME);
+    ROS_DEBUG_STREAM("  NUM_ITERATIONS:       " << NUM_ITERATIONS);
+    ROS_DEBUG_STREAM("  ESTIMATE_EXTRINSIC:   " << ESTIMATE_EXTRINSIC);
+    ROS_DEBUG_STREAM("  ESTIMATE_TD:          " << ESTIMATE_TD);
+    ROS_DEBUG_STREAM("  ROLLING_SHUTTER:      " << ROLLING_SHUTTER);
+    ROS_DEBUG_STREAM("  EX_CALIB_RESULT_PATH: " << EX_CALIB_RESULT_PATH);
+    ROS_DEBUG_STREAM("  VINS_RESULT_PATH:     " << VINS_RESULT_PATH);
+    ROS_DEBUG_STREAM("  OUTPUT_FOLDER:        " << OUTPUT_FOLDER);
+    ROS_DEBUG_STREAM("  IMU_TOPIC:            " << IMU_TOPIC);
+    ROS_DEBUG_STREAM("  ROW:                  " << ROW);
+    ROS_DEBUG_STREAM("  COL:                  " << COL);
+    ROS_DEBUG_STREAM("  TD:                   " << TD);
+    ROS_DEBUG_STREAM("  NUM_OF_CAM:           " << NUM_OF_CAM);
+    ROS_DEBUG_STREAM("  STEREO:               " << STEREO);
+    ROS_DEBUG_STREAM("  USE_IMU:              " << USE_IMU);
+    ROS_DEBUG_STREAM("  MULTIPLE_THREAD:      " << MULTIPLE_THREAD);
+    ROS_DEBUG_STREAM("  pts_gt:               " << pts_gt.size());
+    ROS_DEBUG_STREAM("  IMAGE0_TOPIC:         " << IMAGE0_TOPIC);
+    ROS_DEBUG_STREAM("  IMAGE1_TOPIC:         " << IMAGE1_TOPIC);
+    ROS_DEBUG_STREAM("  FISHEYE_MASK:         " << FISHEYE_MASK);
+    ROS_DEBUG_STREAM("  CAM_NAMES:            " << CAM_NAMES.size());
+    ROS_DEBUG_STREAM("  MAX_CNT:              " << MAX_CNT);
+    ROS_DEBUG_STREAM("  MIN_DIST:             " << MIN_DIST);
+    ROS_DEBUG_STREAM("  F_THRESHOLD:          " << F_THRESHOLD);
+    ROS_DEBUG_STREAM("  SHOW_TRACK:           " << SHOW_TRACK);
+    ROS_DEBUG_STREAM("  FLOW_BACK:            " << FLOW_BACK);
+}
+
 int main(int argc, char **argv)
 {
+    ROS_WARN("main( .. ) [rosNodeTest.cpp]");
+
     ros::init(argc, argv, "vins_estimator");
     ros::NodeHandle n("~");
+
+    ROS_INFO("ROSCONSOLE_ROOT_LOGGER_NAME: %s", ROSCONSOLE_ROOT_LOGGER_NAME);
+    ROS_INFO("ROSCONSOLE_PACKAGE_NAME:     %s", ROSCONSOLE_PACKAGE_NAME);
+    ROS_INFO("ROSCONSOLE_DEFAULT_NAME:     %s", ROSCONSOLE_DEFAULT_NAME);
+
+    std::map<std::string, ros::console::levels::Level> logger_info;
+    if( ros::console::get_loggers(logger_info) ) {
+        for (auto it = logger_info.begin(); it != logger_info.end(); it++)
+            ROS_INFO("  --> %30s : %d", it->first.c_str(), it->second);
+    }
+
     // ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
+    /*
     if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
         ros::console::notifyLoggerLevelsChanged();
     }
+    */
 
     if(argc != 2)
     {
@@ -239,10 +303,12 @@ int main(int argc, char **argv)
     }
 
     string config_file = argv[1];
-    printf("config_file: %s\n", argv[1]);
+    ROS_WARN("config_file: %s [rosNodeTest.cpp]", argv[1]);
 
     readParameters(config_file);
     estimator.setParameter();
+
+    print_params();
 
 #ifdef EIGEN_DONT_PARALLELIZE
     ROS_DEBUG("EIGEN_DONT_PARALLELIZE");

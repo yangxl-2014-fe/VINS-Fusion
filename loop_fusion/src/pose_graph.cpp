@@ -67,6 +67,8 @@ void PoseGraph::loadVocabulary(std::string voc_path)
 
 void PoseGraph::addKeyFrame(KeyFrame* cur_kf, bool flag_detect_loop)
 {
+    ROS_INFO("PoseGraph::addKeyFrame( .., %d )", flag_detect_loop);
+
     //shift to base frame
     Vector3d vio_P_cur;
     Matrix3d vio_R_cur;
@@ -334,6 +336,8 @@ KeyFrame* PoseGraph::getKeyFrame(int index)
 
 int PoseGraph::detectLoop(KeyFrame* keyframe, int frame_index)
 {
+    ROS_INFO("PoseGraph::detectLoop( .., %d )", frame_index);
+
     // put image into image_pool; for visualization
     cv::Mat compressed_image;
     if (DEBUG_IMAGE)

@@ -12,7 +12,9 @@
 
 Estimator::Estimator(): f_manager{Rs}
 {
-    ROS_INFO("init begins");
+    ROS_WARN("Estimator::Estimator() [estimator.cpp]");
+    ROS_WARN("init begins [estimator.cpp]");
+
     initThreadFlag = false;
     clearState();
 }
@@ -72,7 +74,7 @@ void Estimator::clearState()
     sum_of_back = 0;
     sum_of_front = 0;
     frame_count = 0;
-    solver_flag = INITIAL;
+    solver_flag = INITIAL;  // 初始化
     initial_timestamp = 0;
     all_image_frame.clear();
 
@@ -94,6 +96,8 @@ void Estimator::clearState()
 
 void Estimator::setParameter()
 {
+    ROS_WARN("Estimator::setParameter()");
+
     mProcess.lock();
     for (int i = 0; i < NUM_OF_CAM; i++)
     {
@@ -110,7 +114,9 @@ void Estimator::setParameter()
     cout << "set g " << g.transpose() << endl;
     featureTracker.readIntrinsicParameter(CAM_NAMES);
 
-    std::cout << "MULTIPLE_THREAD is " << MULTIPLE_THREAD << '\n';
+    // std::cout << "MULTIPLE_THREAD is " << MULTIPLE_THREAD << '\n';
+    ROS_INFO("MULTIPLE_THREAD : %d [estimator.cpp]", MULTIPLE_THREAD);
+
     if (MULTIPLE_THREAD && !initThreadFlag)
     {
         initThreadFlag = true;
@@ -122,8 +128,8 @@ void Estimator::setParameter()
 /**
  * \brief 切换传感器状态
  *
- * \param use_imu    是否使用 IMU
- * \param use_stereo 是否使用双目
+ * \param use_imu     是否使用 IMU
+ * \param use_stereo  是否使用双目
  */
 void Estimator::changeSensorType(int use_imu, int use_stereo)
 {
@@ -172,6 +178,9 @@ void Estimator::changeSensorType(int use_imu, int use_stereo)
  */
 void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 {
+    ROS_WARN("Estimator::inputImage( %f, _img=(%d, %d), _img1=(%d, %d) )", t, _img.rows, _img.cols, _img1.rows, _img1.cols);
+    ROS_DEBUG("  inputImageCnt: %d", inputImageCnt);
+
     inputImageCnt++;
     map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> featureFrame;
     TicToc featureTrackerTime;
@@ -223,7 +232,7 @@ void Estimator::inputIMU(double t, const Vector3d &linearAcceleration, const Vec
     //printf("input imu with time %f \n", t);
     mBuf.unlock();
 
-    if (solver_flag == NON_LINEAR)
+    if (solver_flag == NON_LINEAR)  // 非线性优化
     {
         mPropagate.lock();
         fastPredictIMU(t, linearAcceleration, angularVelocity);
@@ -380,7 +389,10 @@ void Estimator::processMeasurements()
  */
 void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVector)
 {
-    printf("init first imu pose\n");
+    ROS_WARN("Estimator::initFirstIMUPose( accVector.size()=%d )", accVector.size());
+
+    // printf("init first imu pose\n");
+    ROS_DEBUG("  init first imu pose");
     initFirstPoseFlag = true;
     //return;
     Eigen::Vector3d averAcc(0, 0, 0);
@@ -390,7 +402,8 @@ void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVecto
         averAcc = averAcc + accVector[i].second;
     }
     averAcc = averAcc / n;
-    printf("averge acc %f %f %f\n", averAcc.x(), averAcc.y(), averAcc.z());
+    // printf("averge acc %f %f %f\n", averAcc.x(), averAcc.y(), averAcc.z());
+    ROS_DEBUG("  average acc: %f %f %f", averAcc.x(), averAcc.y(), averAcc.z());
     Matrix3d R0 = Utility::g2R(averAcc);
     double yaw = Utility::R2ypr(R0).x();
     R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
@@ -460,8 +473,10 @@ void Estimator::processIMU(double t, double dt, const Vector3d &linear_accelerat
  */
 void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const double header)
 {
-    ROS_DEBUG("new image coming ------------------------------------------");
-    ROS_DEBUG("Adding feature points %lu", image.size());
+    ROS_WARN("Estimator::processImage( .., %f ) [estimator.cpp:%d]", header, __LINE__);
+
+    ROS_DEBUG("  new image coming --------------- [frame_count : %6d] ---------------------------", frame_count);
+    ROS_DEBUG("  Adding feature points %lu", image.size());
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
     {
         marginalization_flag = MARGIN_OLD;  // 剔除窗口内最早的关键帧
@@ -473,9 +488,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         //printf("non-keyframe\n");
     }
 
-    ROS_DEBUG("%s", marginalization_flag ? "Non-keyframe" : "Keyframe");  // 第二新的帧是否为关键帧
-    ROS_DEBUG("Solving %d", frame_count);
-    ROS_DEBUG("number of feature: %d", f_manager.getFeatureCount());
+    ROS_DEBUG("  %s", marginalization_flag ? "Non-keyframe" : "Keyframe");  // 第二新的帧是否为关键帧
+    ROS_DEBUG("  Solving %d (***)", frame_count);
+    ROS_DEBUG("  num of feature: %6d [estimator.cpp:%d]", f_manager.getFeatureCount(), __LINE__);
     Headers[frame_count] = header;
 
     ImageFrame imageframe(image, header);
@@ -501,7 +516,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         }
     }
 
-    if (solver_flag == INITIAL)
+    if (solver_flag == INITIAL)  // 初始化
     {
         // monocular + IMU initilization
         if (!STEREO && USE_IMU)
@@ -518,9 +533,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 {
                     optimization();
                     updateLatestStates();
-                    solver_flag = NON_LINEAR;
+                    solver_flag = NON_LINEAR;  // 非线性优化
                     slideWindow();
-                    ROS_INFO("Initialization finish!");
+                    ROS_INFO("  Initialization finish! [estimator.cpp:%d]", __LINE__);
                 }
                 else
                     slideWindow();
@@ -549,9 +564,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 }
                 optimization();
                 updateLatestStates();
-                solver_flag = NON_LINEAR;
+                solver_flag = NON_LINEAR;  // 非线性优化
                 slideWindow();
-                ROS_INFO("Initialization finish!");
+                ROS_INFO("Initialization finish! [estimator.cpp:%d]", __LINE__);
             }
         }
 
@@ -566,9 +581,9 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             {
                 optimization();
                 updateLatestStates();
-                solver_flag = NON_LINEAR;
+                solver_flag = NON_LINEAR;  // 非线性优化
                 slideWindow();
-                ROS_INFO("Initialization finish!");
+                ROS_INFO("Initialization finish! [estimator.cpp:%d]", __LINE__);
             }
         }
 
@@ -600,7 +615,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             predictPtsInNextFrame();
         }
             
-        ROS_DEBUG("solver costs: %fms", t_solve.toc());
+        ROS_DEBUG("  solver costs: %fms [estimator.cpp:%d]", t_solve.toc(), __LINE__);
 
         if (failureDetection())
         {
@@ -1053,6 +1068,8 @@ bool Estimator::failureDetection()
 
 void Estimator::optimization()
 {
+    ROS_WARN("Estimator::optimization()");
+
     TicToc t_whole, t_prepare;
     vector2double();
 
@@ -1157,7 +1174,7 @@ void Estimator::optimization()
         }
     }
 
-    ROS_DEBUG("visual measurement count: %d", f_m_cnt);
+    ROS_DEBUG("  visual measurement count: %d [estimator.cpp:%d]", f_m_cnt, __LINE__);
     //printf("prepare for ceres: %f \n", t_prepare.toc());
 
     ceres::Solver::Options options;
@@ -1177,7 +1194,7 @@ void Estimator::optimization()
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
     //cout << summary.BriefReport() << endl;
-    ROS_DEBUG("Iterations : %d", static_cast<int>(summary.iterations.size()));
+    ROS_WARN("  Iterations : %d [estimator.cpp:%d]", static_cast<int>(summary.iterations.size()), __LINE__);
     //printf("solver costs: %f \n", t_solver.toc());
 
     double2vector();
@@ -1278,11 +1295,11 @@ void Estimator::optimization()
 
         TicToc t_pre_margin;
         marginalization_info->preMarginalize();
-        ROS_DEBUG("pre marginalization %f ms", t_pre_margin.toc());
+        ROS_DEBUG("  pre marginalization %f ms [estimator.cpp:%d]", t_pre_margin.toc(), __LINE__);
         
         TicToc t_margin;
         marginalization_info->marginalize();
-        ROS_DEBUG("marginalization %f ms", t_margin.toc());
+        ROS_DEBUG("  marginalization %f ms [estimator.cpp:%d]", t_margin.toc(), __LINE__);
 
         std::unordered_map<long, double *> addr_shift;
         for (int i = 1; i <= WINDOW_SIZE; i++)
@@ -1331,14 +1348,14 @@ void Estimator::optimization()
             }
 
             TicToc t_pre_margin;
-            ROS_DEBUG("begin marginalization");
+            ROS_DEBUG("  begin marginalization");
             marginalization_info->preMarginalize();
-            ROS_DEBUG("end pre marginalization, %f ms", t_pre_margin.toc());
+            ROS_DEBUG("  end pre marginalization, %f ms", t_pre_margin.toc());
 
             TicToc t_margin;
-            ROS_DEBUG("begin marginalization");
+            ROS_DEBUG("  begin marginalization");
             marginalization_info->marginalize();
-            ROS_DEBUG("end marginalization, %f ms", t_margin.toc());
+            ROS_DEBUG("  end marginalization, %f ms", t_margin.toc());
             
             std::unordered_map<long, double *> addr_shift;
             for (int i = 0; i <= WINDOW_SIZE; i++)
@@ -1422,7 +1439,7 @@ void Estimator::slideWindow()
                 angular_velocity_buf[WINDOW_SIZE].clear();
             }
 
-            if (true || solver_flag == INITIAL)
+            if (true || solver_flag == INITIAL)  // 初始化
             {
                 map<double, ImageFrame>::iterator it_0;
                 it_0 = all_image_frame.find(t_0);

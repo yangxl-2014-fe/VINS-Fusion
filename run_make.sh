@@ -1,6 +1,7 @@
 #!/bin/bash
 
 source ./scripts/common.sh
+header_warn "run_make.sh start @ $(date '+%Y-%m-%d %H:%M:%S.%N')"
 
 local_home=$PWD
 
@@ -21,4 +22,5 @@ cd ${local_home}
 (sleep 2; gnome-terminal -e "bash ./scripts/data.sh") &
 
 wait
+header_warn "run_make.sh end @ $(date '+%Y-%m-%d %H:%M:%S.%N')"
 

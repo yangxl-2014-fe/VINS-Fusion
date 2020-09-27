@@ -65,6 +65,8 @@ T readParam(ros::NodeHandle &n, std::string name)
 
 void readParameters(std::string config_file)
 {
+    ROS_WARN("readParameters( %s ) [parameters.cpp]", config_file.c_str());
+
     FILE *fh = fopen(config_file.c_str(),"r");
     if(fh == NULL){
         ROS_WARN("config_file dosen't exist; wrong config_file path");
@@ -90,11 +92,13 @@ void readParameters(std::string config_file)
     MULTIPLE_THREAD = fsSettings["multiple_thread"];
 
     USE_IMU = fsSettings["imu"];
-    printf("USE_IMU: %d\n", USE_IMU);
+    // printf("USE_IMU: %d\n", USE_IMU);
+    ROS_INFO("USE_IMU: %d", USE_IMU);
     if(USE_IMU)
     {
         fsSettings["imu_topic"] >> IMU_TOPIC;
-        printf("IMU_TOPIC: %s\n", IMU_TOPIC.c_str());
+        // printf("IMU_TOPIC: %s\n", IMU_TOPIC.c_str());
+        ROS_INFO("IMU_TOPIC: %s", IMU_TOPIC.c_str());
         ACC_N = fsSettings["acc_n"];
         ACC_W = fsSettings["acc_w"];
         GYR_N = fsSettings["gyr_n"];
@@ -109,7 +113,8 @@ void readParameters(std::string config_file)
 
     fsSettings["output_path"] >> OUTPUT_FOLDER;
     VINS_RESULT_PATH = OUTPUT_FOLDER + "/vio.csv";
-    std::cout << "result path " << VINS_RESULT_PATH << std::endl;
+    //std::cout << "result path " << VINS_RESULT_PATH << std::endl;
+    ROS_WARN("VINS_RESULT_PATH: %s [parameters.cpp]", VINS_RESULT_PATH.c_str());
     std::ofstream fout(VINS_RESULT_PATH, std::ios::out);
     fout.close();
 

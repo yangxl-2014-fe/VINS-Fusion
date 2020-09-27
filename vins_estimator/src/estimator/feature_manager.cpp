@@ -62,8 +62,10 @@ int FeatureManager::getFeatureCount()
  */
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
-    ROS_DEBUG("input feature: %d", (int)image.size());
-    ROS_DEBUG("num of feature: %d", getFeatureCount());
+    ROS_WARN("FeatureManager::addFeatureCheckParallax( frame_count=%d, image.size()=%d, td=%f )", frame_count, (int)image.size(), td);
+
+    ROS_DEBUG("  input feature:  %6d", (int)image.size());
+    ROS_DEBUG("  num of feature: %6d [feature_manager.cpp:%d]", getFeatureCount(), __LINE__);
     double parallax_sum = 0;
     int parallax_num = 0;
     last_track_num = 0;
@@ -127,8 +129,8 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
     }
     else
     {
-        ROS_DEBUG("parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
-        ROS_DEBUG("current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
+        ROS_DEBUG("  parallax_sum: %lf, parallax_num: %d", parallax_sum, parallax_num);
+        ROS_DEBUG("  current parallax: %lf", parallax_sum / parallax_num * FOCAL_LENGTH);
         last_average_parallax = parallax_sum / parallax_num * FOCAL_LENGTH;
         return parallax_sum / parallax_num >= MIN_PARALLAX;  //! 视差是否超过阈值
     }

@@ -118,6 +118,8 @@ void MarginalizationInfo::addResidualBlockInfo(ResidualBlockInfo *residual_block
 
 void MarginalizationInfo::preMarginalize()
 {
+    ROS_WARN("MarginalizationInfo::preMarginalize()");
+
     for (auto it : factors)
     {
         it->Evaluate();
@@ -182,6 +184,8 @@ void* ThreadsConstructA(void* threadsstruct)
 
 void MarginalizationInfo::marginalize()
 {
+    ROS_WARN("MarginalizationInfo::marginalize()");
+
     int pos = 0;
     for (auto &it : parameter_block_idx)
     {

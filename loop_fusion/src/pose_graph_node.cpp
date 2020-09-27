@@ -399,9 +399,11 @@ void command()
 
 int main(int argc, char **argv)
 {
+    ROS_WARN("main( .. ) [pose_graph_node.cpp]");
+
     ros::init(argc, argv, "loop_fusion");
     ros::NodeHandle n("~");
-    if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
+    if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
         ros::console::notifyLoggerLevelsChanged();
     }
     posegraph.registerPub(n);
@@ -477,6 +479,7 @@ int main(int argc, char **argv)
     }
     else
     {
+        ROS_INFO("no previous pose graph");
         printf("no previous pose graph\n");
         load_flag = 1;
     }

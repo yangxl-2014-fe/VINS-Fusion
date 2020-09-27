@@ -82,15 +82,15 @@ class Estimator
 
     enum SolverFlag
     {
-        INITIAL,
-        NON_LINEAR
+        INITIAL,    //! 初始化
+        NON_LINEAR  //! 非线性优化
     };
 
     // 边缘化操作时都是二选一，加入第二新的帧，则需要踢出窗口内最早的关键帧
     enum MarginalizationFlag
     {
-        MARGIN_OLD = 0,
-        MARGIN_SECOND_NEW = 1
+        MARGIN_OLD = 0,        //! 边缘化最早的关键帧
+        MARGIN_SECOND_NEW = 1  //! 边缘化第二新的帧
     };
 
     std::mutex mProcess;

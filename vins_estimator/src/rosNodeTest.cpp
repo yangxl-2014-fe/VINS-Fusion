@@ -126,7 +126,7 @@ void sync_process()
             }
             m_buf.unlock();
             if(!image.empty()) {
-                ROS_INFO("  - exec [rosNodeTest.cpp:%d]", __LINE__);
+                ROS_INFO_ONCE("  - exec [rosNodeTest.cpp:%d]", __LINE__);
                 estimator.inputImage(time, image);
             }
         }

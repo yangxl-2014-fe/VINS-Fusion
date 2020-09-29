@@ -392,7 +392,7 @@ void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVecto
     ROS_WARN("Estimator::initFirstIMUPose( accVector.size()=%d )", accVector.size());
 
     // printf("init first imu pose\n");
-    ROS_DEBUG("  init first imu pose");
+    ROS_WARN("  init first imu pose");
     initFirstPoseFlag = true;
     //return;
     Eigen::Vector3d averAcc(0, 0, 0);
@@ -403,7 +403,7 @@ void Estimator::initFirstIMUPose(vector<pair<double, Eigen::Vector3d>> &accVecto
     }
     averAcc = averAcc / n;
     // printf("averge acc %f %f %f\n", averAcc.x(), averAcc.y(), averAcc.z());
-    ROS_DEBUG("  average acc: %f %f %f", averAcc.x(), averAcc.y(), averAcc.z());
+    ROS_WARN("  average acc: %f %f %f", averAcc.x(), averAcc.y(), averAcc.z());
     Matrix3d R0 = Utility::g2R(averAcc);
     double yaw = Utility::R2ypr(R0).x();
     R0 = Utility::ypr2R(Eigen::Vector3d{-yaw, 0, 0}) * R0;
@@ -521,7 +521,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         // monocular + IMU initilization
         if (!STEREO && USE_IMU)
         {
-            if (frame_count == WINDOW_SIZE)
+            if (frame_count == WINDOW_SIZE)  // 缓存区填满，开始初始化
             {
                 bool result = false;
                 if(ESTIMATE_EXTRINSIC != 2 && (header - initial_timestamp) > 0.1)
@@ -644,6 +644,8 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 
 bool Estimator::initialStructure()
 {
+    ROS_WARN("Estimator::initialStructure()");
+
     TicToc t_sfm;
     //check imu observibility
     {
@@ -872,7 +874,7 @@ bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
             if(average_parallax * 460 > 30 && m_estimator.solveRelativeRT(corres, relative_R, relative_T))
             {
                 l = i;
-                ROS_DEBUG("average_parallax %f choose l %d and newest frame to triangulate the whole structure", average_parallax * 460, l);
+                ROS_DEBUG("  average_parallax %f choose l %d and newest frame to triangulate the whole structure [estimator.cpp:%d]", average_parallax * 460, l, __LINE__);
                 return true;
             }
         }
@@ -1395,8 +1397,10 @@ void Estimator::optimization()
 
 void Estimator::slideWindow()
 {
+    ROS_WARN("Estimator::slideWindow()");
+
     TicToc t_margin;
-    if (marginalization_flag == MARGIN_OLD)
+    if (marginalization_flag == MARGIN_OLD)  // 边缘化最早的关键帧
     {
         double t_0 = Headers[0];
         back_R0 = Rs[0];
@@ -1449,7 +1453,7 @@ void Estimator::slideWindow()
             slideWindowOld();
         }
     }
-    else
+    else // 边缘化第二新的帧
     {
         if (frame_count == WINDOW_SIZE)
         {

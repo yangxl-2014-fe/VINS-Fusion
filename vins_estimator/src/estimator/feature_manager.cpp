@@ -125,6 +125,7 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
 
     if (parallax_num == 0)
     {
+        ROS_INFO("  parallax_num:   %d [feature_manager.cpp:%d]", __LINE__);
         return true;
     }
     else

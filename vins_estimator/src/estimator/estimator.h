@@ -102,7 +102,7 @@ class Estimator
     double prevTime, curTime;
     bool openExEstimation;
 
-    std::thread trackThread;
+    // std::thread trackThread;  // 此线性并未创建使用
     std::thread processThread;
 
     FeatureTracker featureTracker;

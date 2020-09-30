@@ -126,7 +126,7 @@ void sync_process()
             }
             m_buf.unlock();
             if(!image.empty()) {
-                ROS_INFO_ONCE("  - exec [rosNodeTest.cpp:%d]", __LINE__);
+                ROS_INFO_ONCE("  - exec %.9lf [rosNodeTest.cpp:%d]", time, __LINE__);
                 estimator.inputImage(time, image);
             }
         }
@@ -257,7 +257,7 @@ void print_params()
     ROS_DEBUG_STREAM("  NUM_OF_CAM:           " << NUM_OF_CAM);
     ROS_DEBUG_STREAM("  STEREO:               " << STEREO);
     ROS_DEBUG_STREAM("  USE_IMU:              " << USE_IMU);
-    ROS_DEBUG_STREAM("  MULTIPLE_THREAD:      " << MULTIPLE_THREAD);
+    ROS_DEBUG_STREAM("  MULTIPLE_THREAD:      " << MULTIPLE_THREAD << "   (Estimator::processMeasurements() as separated thread)");
     ROS_DEBUG_STREAM("  pts_gt:               " << pts_gt.size());
     ROS_DEBUG_STREAM("  IMAGE0_TOPIC:         " << IMAGE0_TOPIC);
     ROS_DEBUG_STREAM("  IMAGE1_TOPIC:         " << IMAGE1_TOPIC);

@@ -68,7 +68,7 @@ void readParameters(std::string config_file);
 
 enum SIZE_PARAMETERIZATION
 {
-    SIZE_POSE = 7,
+    SIZE_POSE = 7,  //! {R : 4,  t : 3}
     SIZE_SPEEDBIAS = 9,
     SIZE_FEATURE = 1
 };

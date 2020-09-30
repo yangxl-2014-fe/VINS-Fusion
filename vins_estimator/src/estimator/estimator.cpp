@@ -13,7 +13,7 @@
 Estimator::Estimator(): f_manager{Rs}
 {
     ROS_WARN("Estimator::Estimator() [estimator.cpp]");
-    ROS_WARN("init begins [estimator.cpp]");
+    ROS_WARN("  init begins [estimator.cpp:%d]", __LINE__);
 
     initThreadFlag = false;
     clearState();
@@ -115,12 +115,12 @@ void Estimator::setParameter()
     featureTracker.readIntrinsicParameter(CAM_NAMES);
 
     // std::cout << "MULTIPLE_THREAD is " << MULTIPLE_THREAD << '\n';
-    ROS_INFO("MULTIPLE_THREAD : %d [estimator.cpp]", MULTIPLE_THREAD);
+    ROS_INFO("  MULTIPLE_THREAD : %d [estimator.cpp:%d]", MULTIPLE_THREAD, __LINE__);
 
     if (MULTIPLE_THREAD && !initThreadFlag)
     {
         initThreadFlag = true;
-        processThread = std::thread(&Estimator::processMeasurements, this);  //! 主线程
+        processThread = std::thread(&Estimator::processMeasurements, this);  //! 处理线程
     }
     mProcess.unlock();
 }
@@ -175,6 +175,8 @@ void Estimator::changeSensorType(int use_imu, int use_stereo)
  * \param t      时间戳
  * \param _img   左图像
  * \param _img1  右图像
+ * 
+ * \note         (MULTIPLE_THREAD 为 1，为何每两帧处理一次，inputImageCnt 为奇数时被忽略掉)
  */
 void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
 {
@@ -197,9 +199,9 @@ void Estimator::inputImage(double t, const cv::Mat &_img, const cv::Mat &_img1)
         pubTrackImage(imgTrack, t);
     }
     
-    if(MULTIPLE_THREAD)  
+    if(MULTIPLE_THREAD)  // 多线性模式: Estimator::processMeasurements 作为独立线程一直在执行
     {     
-        if(inputImageCnt % 2 == 0)
+        if(inputImageCnt % 2 == 0)  // 按双目模式在运行
         {
             mBuf.lock();
             featureBuf.push(make_pair(t, featureFrame));
@@ -262,6 +264,8 @@ void Estimator::inputFeature(double t, const map<int, vector<pair<int, Eigen::Ma
 bool Estimator::getIMUInterval(double t0, double t1, vector<pair<double, Eigen::Vector3d>> &accVector, 
                                 vector<pair<double, Eigen::Vector3d>> &gyrVector)
 {
+    ROS_WARN("Estimator::getIMUInterval( t0=%lf, t1=%lf, %d, %d )", t0, t1, accVector.size(), gyrVector.size());
+
     if(accBuf.empty())
     {
         printf("not receive imu\n");
@@ -312,6 +316,7 @@ void Estimator::processMeasurements()
         //printf("process measurments\n");
         pair<double, map<int, vector<pair<int, Eigen::Matrix<double, 7, 1> > > > > feature;
         vector<pair<double, Eigen::Vector3d>> accVector, gyrVector;
+
         if(!featureBuf.empty())
         {
             feature = featureBuf.front();
@@ -324,7 +329,7 @@ void Estimator::processMeasurements()
                 else
                 {
                     printf("wait for imu ... \n");
-                    if (! MULTIPLE_THREAD)
+                    if (! MULTIPLE_THREAD)  // 非多线程模式，立刻退出循环
                         return;
                     std::chrono::milliseconds dura(5);
                     std::this_thread::sleep_for(dura);
@@ -373,7 +378,7 @@ void Estimator::processMeasurements()
             mProcess.unlock();
         }
 
-        if (! MULTIPLE_THREAD)
+        if (! MULTIPLE_THREAD)  // 非多线程模式，立刻退出循环
             break;
 
         std::chrono::milliseconds dura(2);
@@ -477,19 +482,20 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 
     ROS_DEBUG("  new image coming --------------- [frame_count : %6d] ---------------------------", frame_count);
     ROS_DEBUG("  Adding feature points %lu", image.size());
+
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
     {
-        marginalization_flag = MARGIN_OLD;  // 剔除窗口内最早的关键帧
+        marginalization_flag = MARGIN_OLD;  // 边缘化窗口内最早的关键帧
         //printf("keyframe\n");
     }
     else
     {
-        marginalization_flag = MARGIN_SECOND_NEW;  // 剔除窗口内第二新的帧
+        marginalization_flag = MARGIN_SECOND_NEW;  // 边缘化窗口内第二新的帧
         //printf("non-keyframe\n");
     }
 
     ROS_DEBUG("  %s", marginalization_flag ? "Non-keyframe" : "Keyframe");  // 第二新的帧是否为关键帧
-    ROS_DEBUG("  Solving %d (***)", frame_count);
+    ROS_DEBUG("  Solving         %d (***)", frame_count);
     ROS_DEBUG("  num of feature: %6d [estimator.cpp:%d]", f_manager.getFeatureCount(), __LINE__);
     Headers[frame_count] = header;
 
@@ -599,12 +605,13 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         }
 
     }
-    else
+    else  // 姿态估计
     {
         TicToc t_solve;
         if(!USE_IMU)
             f_manager.initFramePoseByPnP(frame_count, Ps, Rs, tic, ric);
         f_manager.triangulate(frame_count, Ps, Rs, tic, ric);
+
         optimization();
         set<int> removeIndex;
         outliersRejection(removeIndex);
@@ -884,6 +891,7 @@ bool Estimator::relativePose(Matrix3d &relative_R, Vector3d &relative_T, int &l)
 
 void Estimator::vector2double()
 {
+    // 移动姿态信息
     for (int i = 0; i <= WINDOW_SIZE; i++)
     {
         para_Pose[i][0] = Ps[i].x();
@@ -911,6 +919,7 @@ void Estimator::vector2double()
         }
     }
 
+    // 相机间外参
     for (int i = 0; i < NUM_OF_CAM; i++)
     {
         para_Ex_Pose[i][0] = tic[i].x();
@@ -982,7 +991,6 @@ void Estimator::double2vector()
                 Bgs[i] = Vector3d(para_SpeedBias[i][6],
                                   para_SpeedBias[i][7],
                                   para_SpeedBias[i][8]);
-            
         }
     }
     else
@@ -1068,6 +1076,10 @@ bool Estimator::failureDetection()
     return false;
 }
 
+
+/**
+ * \brief 窗口内姿态优化
+ */
 void Estimator::optimization()
 {
     ROS_WARN("Estimator::optimization()");
@@ -1170,7 +1182,7 @@ void Estimator::optimization()
                                                                  it_per_id.feature_per_frame[0].cur_td, it_per_frame.cur_td);
                     problem.AddResidualBlock(f, loss_function, para_Ex_Pose[0], para_Ex_Pose[1], para_Feature[feature_index], para_Td[0]);
                 }
-               
+
             }
             f_m_cnt++;
         }
@@ -1453,7 +1465,7 @@ void Estimator::slideWindow()
             slideWindowOld();
         }
     }
-    else // 边缘化第二新的帧
+    else // 边缘化第二新的关键帧
     {
         if (frame_count == WINDOW_SIZE)
         {
@@ -1488,8 +1500,8 @@ void Estimator::slideWindow()
                 angular_velocity_buf[WINDOW_SIZE].clear();
             }
             slideWindowNew();
-        }
-    }
+        } // if
+    } // else
 }
 
 void Estimator::slideWindowNew()

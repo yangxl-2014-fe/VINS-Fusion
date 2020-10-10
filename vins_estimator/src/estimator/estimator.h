@@ -149,18 +149,18 @@ class Estimator
     vector<Vector3d> key_poses;
     double initial_timestamp;
 
-
-    double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
+    // Ceres 在 Estimator::optimization() 中优化的参数
+    double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];            //! 帧间外参
     double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS];
     double para_Feature[NUM_OF_F][SIZE_FEATURE];
-    double para_Ex_Pose[2][SIZE_POSE];
+    double para_Ex_Pose[2][SIZE_POSE];                       //! 采集设备的相机间外参
     double para_Retrive_Pose[SIZE_POSE];
-    double para_Td[1][1];
+    double para_Td[1][1];                                    //! 相机与 IMU 间时间戳偏移
     double para_Tr[1][1];
 
     int loop_window_index;
 
-    MarginalizationInfo *last_marginalization_info;
+    MarginalizationInfo *last_marginalization_info;          //! 边缘化的先验信息
     vector<double *> last_marginalization_parameter_blocks;
 
     map<double, ImageFrame> all_image_frame;

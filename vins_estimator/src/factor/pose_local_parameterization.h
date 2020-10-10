@@ -15,8 +15,8 @@
 
 class PoseLocalParameterization : public ceres::LocalParameterization
 {
-    virtual bool Plus(const double *x, const double *delta, double *x_plus_delta) const;
-    virtual bool ComputeJacobian(const double *x, double *jacobian) const;
+    virtual bool Plus(const double *x, const double *delta, double *x_plus_delta) const;  //! 计算增量 - 迭代优化用
+    virtual bool ComputeJacobian(const double *x, double *jacobian) const;  //! 此次默认返回的是 7x6 的单位阵
     virtual int GlobalSize() const { return 7; };
     virtual int LocalSize() const { return 6; };
 };

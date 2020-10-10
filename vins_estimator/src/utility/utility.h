@@ -20,6 +20,7 @@ class Utility
     template <typename Derived>
     static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta)
     {
+        // 转角增量变四元数
         typedef typename Derived::Scalar Scalar_t;
 
         Eigen::Quaternion<Scalar_t> dq;
@@ -35,6 +36,7 @@ class Utility
     template <typename Derived>
     static Eigen::Matrix<typename Derived::Scalar, 3, 3> skewSymmetric(const Eigen::MatrixBase<Derived> &q)
     {
+        // 四元数旋转部分构造反对称矩阵 (旋转)
         Eigen::Matrix<typename Derived::Scalar, 3, 3> ans;
         ans << typename Derived::Scalar(0), -q(2), q(1),
             q(2), typename Derived::Scalar(0), -q(0),
@@ -52,6 +54,7 @@ class Utility
         return q;
     }
 
+    // Qleft 与 Qright 差异在于 skewSymmetric(qq.vec()) 取正还是取负
     template <typename Derived>
     static Eigen::Matrix<typename Derived::Scalar, 4, 4> Qleft(const Eigen::QuaternionBase<Derived> &q)
     {
@@ -74,6 +77,7 @@ class Utility
 
     static Eigen::Vector3d R2ypr(const Eigen::Matrix3d &R)
     {
+        // 旋转矩阵 到 欧拉角 yaw pitch roll
         Eigen::Vector3d n = R.col(0);
         Eigen::Vector3d o = R.col(1);
         Eigen::Vector3d a = R.col(2);
@@ -92,6 +96,7 @@ class Utility
     template <typename Derived>
     static Eigen::Matrix<typename Derived::Scalar, 3, 3> ypr2R(const Eigen::MatrixBase<Derived> &ypr)
     {
+        // 欧拉角 yaw pitch roll 到 旋转矩阵
         typedef typename Derived::Scalar Scalar_t;
 
         Scalar_t y = ypr(0) / 180.0 * M_PI;

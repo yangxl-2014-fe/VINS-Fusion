@@ -1093,17 +1093,17 @@ void Estimator::optimization()
     loss_function = new ceres::HuberLoss(1.0);
     //loss_function = new ceres::CauchyLoss(1.0 / FOCAL_LENGTH);
     //ceres::LossFunction* loss_function = new ceres::HuberLoss(1.0);
-    for (int i = 0; i < frame_count + 1; i++)
+    for (int i = 0; i < frame_count + 1; i++)  // 帧间外参
     {
         ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
-        problem.AddParameterBlock(para_Pose[i], SIZE_POSE, local_parameterization);
+        problem.AddParameterBlock(para_Pose[i], SIZE_POSE, local_parameterization);  // SIZE_POSE = 7
         if(USE_IMU)
-            problem.AddParameterBlock(para_SpeedBias[i], SIZE_SPEEDBIAS);
+            problem.AddParameterBlock(para_SpeedBias[i], SIZE_SPEEDBIAS);            // SIZE_SPEEDBIAS = 9
     }
     if(!USE_IMU)
         problem.SetParameterBlockConstant(para_Pose[0]);
 
-    for (int i = 0; i < NUM_OF_CAM; i++)
+    for (int i = 0; i < NUM_OF_CAM; i++)  // 采集设备的相机间外参
     {
         ceres::LocalParameterization *local_parameterization = new PoseLocalParameterization();
         problem.AddParameterBlock(para_Ex_Pose[i], SIZE_POSE, local_parameterization);
@@ -1120,17 +1120,17 @@ void Estimator::optimization()
     }
     problem.AddParameterBlock(para_Td[0], 1);
 
-    if (!ESTIMATE_TD || Vs[0].norm() < 0.2)
+    if (!ESTIMATE_TD || Vs[0].norm() < 0.2)  // 是否优化 IMU 与 相机间时间戳差异
         problem.SetParameterBlockConstant(para_Td[0]);
 
-    if (last_marginalization_info && last_marginalization_info->valid)
+    if (last_marginalization_info && last_marginalization_info->valid)  // 使用边缘化的先验信息
     {
         // construct new marginlization_factor
         MarginalizationFactor *marginalization_factor = new MarginalizationFactor(last_marginalization_info);
         problem.AddResidualBlock(marginalization_factor, NULL,
                                  last_marginalization_parameter_blocks);
     }
-    if(USE_IMU)
+    if(USE_IMU) // 紧耦合，IMU 亦参与优化
     {
         for (int i = 0; i < frame_count; i++)
         {
@@ -1138,7 +1138,8 @@ void Estimator::optimization()
             if (pre_integrations[j]->sum_dt > 10.0)
                 continue;
             IMUFactor* imu_factor = new IMUFactor(pre_integrations[j]);
-            problem.AddResidualBlock(imu_factor, NULL, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
+            problem.AddResidualBlock(
+                imu_factor, NULL, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
         }
     }
 
@@ -1147,7 +1148,7 @@ void Estimator::optimization()
     for (auto &it_per_id : f_manager.feature)
     {
         it_per_id.used_num = it_per_id.feature_per_frame.size();
-        if (it_per_id.used_num < 4)
+        if (it_per_id.used_num < 4) // 不考虑观测次数少于 4 次的特征
             continue;
  
         ++feature_index;
@@ -1159,7 +1160,7 @@ void Estimator::optimization()
         for (auto &it_per_frame : it_per_id.feature_per_frame)
         {
             imu_j++;
-            if (imu_i != imu_j)
+            if (imu_i != imu_j)  // 计算左相机 pts_i 与 左相机 pts_j 重投影误差
             {
                 Vector3d pts_j = it_per_frame.point;
                 ProjectionTwoFrameOneCamFactor *f_td = new ProjectionTwoFrameOneCamFactor(pts_i, pts_j, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocity,
@@ -1167,7 +1168,7 @@ void Estimator::optimization()
                 problem.AddResidualBlock(f_td, loss_function, para_Pose[imu_i], para_Pose[imu_j], para_Ex_Pose[0], para_Feature[feature_index], para_Td[0]);
             }
 
-            if(STEREO && it_per_frame.is_stereo)
+            if(STEREO && it_per_frame.is_stereo) // 计算左相机 pts_i 与 右相机 pts_j_right 重投影误差
             {                
                 Vector3d pts_j_right = it_per_frame.pointRight;
                 if(imu_i != imu_j)
@@ -1178,13 +1179,14 @@ void Estimator::optimization()
                 }
                 else
                 {
+                    // 优化双目相机间外参
                     ProjectionOneFrameTwoCamFactor *f = new ProjectionOneFrameTwoCamFactor(pts_i, pts_j_right, it_per_id.feature_per_frame[0].velocity, it_per_frame.velocityRight,
                                                                  it_per_id.feature_per_frame[0].cur_td, it_per_frame.cur_td);
                     problem.AddResidualBlock(f, loss_function, para_Ex_Pose[0], para_Ex_Pose[1], para_Feature[feature_index], para_Td[0]);
                 }
 
             }
-            f_m_cnt++;
+            f_m_cnt++;  // 构成目标方程的特征对数量
         }
     }
 
@@ -1200,7 +1202,7 @@ void Estimator::optimization()
     //options.use_explicit_schur_complement = true;
     //options.minimizer_progress_to_stdout = true;
     //options.use_nonmonotonic_steps = true;
-    if (marginalization_flag == MARGIN_OLD)
+    if (marginalization_flag == MARGIN_OLD)  // 边缘化的帧为最早的帧时，允许的求解时间要短一些
         options.max_solver_time_in_seconds = SOLVER_TIME * 4.0 / 5.0;
     else
         options.max_solver_time_in_seconds = SOLVER_TIME;
@@ -1216,7 +1218,8 @@ void Estimator::optimization()
 
     if(frame_count < WINDOW_SIZE)
         return;
-    
+
+    // 滑窗已满，需要将 特定帧 移到边缘先验
     TicToc t_whole_marginalization;
     if (marginalization_flag == MARGIN_OLD)
     {
@@ -1253,6 +1256,7 @@ void Estimator::optimization()
         }
 
         {
+            // 构造先验特征的重投影误差
             int feature_index = -1;
             for (auto &it_per_id : f_manager.feature)
             {
@@ -1315,6 +1319,7 @@ void Estimator::optimization()
         marginalization_info->marginalize();
         ROS_DEBUG("  marginalization %f ms [estimator.cpp:%d]", t_margin.toc(), __LINE__);
 
+        // 参数块移位 - 边缘化的帧仅有一帧 ?
         std::unordered_map<long, double *> addr_shift;
         for (int i = 1; i <= WINDOW_SIZE; i++)
         {
@@ -1331,12 +1336,13 @@ void Estimator::optimization()
 
         if (last_marginalization_info)
             delete last_marginalization_info;
+        // 边缘化的帧仅有一帧 ?
         last_marginalization_info = marginalization_info;
         last_marginalization_parameter_blocks = parameter_blocks;
         
     }
     else
-    {
+    { // 边缘化第二新的关键帧
         if (last_marginalization_info &&
             std::count(std::begin(last_marginalization_parameter_blocks), std::end(last_marginalization_parameter_blocks), para_Pose[WINDOW_SIZE - 1]))
         {

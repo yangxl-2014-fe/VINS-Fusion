@@ -23,8 +23,8 @@ double BIAS_ACC_THRESHOLD;
 double BIAS_GYR_THRESHOLD;
 double SOLVER_TIME;
 int NUM_ITERATIONS;
-int ESTIMATE_EXTRINSIC;
-int ESTIMATE_TD;
+int ESTIMATE_EXTRINSIC;  //! 是否估计相机到 Body Frame 间外参
+int ESTIMATE_TD;         //! 是否估计 IMU 与相机间时间戳差异
 int ROLLING_SHUTTER;
 std::string EX_CALIB_RESULT_PATH;
 std::string VINS_RESULT_PATH;
